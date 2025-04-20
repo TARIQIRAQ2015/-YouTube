@@ -3,7 +3,9 @@ from pytube import Playlist, YouTube
 import os
 import re
 import time
-from datetime import datetime
+import subprocess
+import webbrowser
+from urllib.parse import quote
 
 # تكوين الصفحة
 st.set_page_config(
@@ -17,58 +19,82 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main {
+        background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
+        color: white;
         padding: 2rem;
-        border-radius: 10px;
-        background-color: #f8f9fa;
     }
     .stButton > button {
         width: 100%;
-        background-color: #ff0000;
+        background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
         color: white;
         border: none;
-        padding: 0.5rem;
-        border-radius: 5px;
+        padding: 0.8rem;
+        border-radius: 50px;
         font-size: 1.2rem;
         margin-top: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 114, 255, 0.3);
     }
     .stButton > button:hover {
-        background-color: #cc0000;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 114, 255, 0.4);
     }
     .success-box {
+        background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
         padding: 1rem;
-        background-color: #d4edda;
-        border-radius: 5px;
+        border-radius: 15px;
         margin: 1rem 0;
+        box-shadow: 0 4px 15px rgba(0, 176, 155, 0.2);
     }
     .error-box {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ff4949 100%);
         padding: 1rem;
-        background-color: #f8d7da;
-        border-radius: 5px;
+        border-radius: 15px;
         margin: 1rem 0;
+        box-shadow: 0 4px 15px rgba(255, 73, 73, 0.2);
     }
     .info-box {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         padding: 1rem;
-        background-color: #cce5ff;
-        border-radius: 5px;
+        border-radius: 15px;
         margin: 1rem 0;
+        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.2);
     }
     .title-box {
         text-align: center;
         padding: 2rem;
         margin-bottom: 2rem;
-        background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);
-        color: white;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    .stTextInput > div > div {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50px;
+        padding: 0.5rem 1rem;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+    .stTextInput > div > div:focus-within {
+        border-color: #00c6ff;
     }
     .download-stats {
-        display: flex;
-        justify-content: space-around;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 1.5rem;
         margin: 1rem 0;
+    }
+    .stat-card {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
         padding: 1rem;
-        background-color: white;
-        border-radius: 5px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        text-align: center;
+    }
+    .progress-bar {
+        border-radius: 50px !important;
+        height: 20px !important;
+    }
+    .progress-bar > div {
+        background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -76,24 +102,49 @@ st.markdown("""
 # العنوان الرئيسي
 st.markdown("""
 <div class="title-box">
-    <h1>📥 تحميل قائمة تشغيل YouTube</h1>
-    <p style='font-size: 1.2rem;'>قم بلصق رابط قائمة التشغيل وسيتم تحميل كل الفيديوهات بأعلى جودة متاحة</p>
+    <h1 style='font-size: 2.5rem; margin-bottom: 1rem;'>📥 تحميل قائمة تشغيل YouTube</h1>
+    <p style='font-size: 1.2rem; opacity: 0.9;'>قم بلصق رابط قائمة التشغيل للتحميل عبر Internet Download Manager</p>
 </div>
 """, unsafe_allow_html=True)
 
-# إنشاء مجلد التحميل
-download_path = "downloads"
-os.makedirs(download_path, exist_ok=True)
+def is_idm_installed():
+    """التحقق من تثبيت Internet Download Manager"""
+    try:
+        # البحث عن IDM في المسارات المحتملة
+        idm_paths = [
+            r"C:\Program Files (x86)\Internet Download Manager\IDMan.exe",
+            r"C:\Program Files\Internet Download Manager\IDMan.exe"
+        ]
+        return any(os.path.exists(path) for path in idm_paths)
+    except:
+        return False
 
-def format_size(size_bytes):
-    """تحويل حجم الملف إلى صيغة مقروءة"""
-    for unit in ['B', 'KB', 'MB', 'GB']:
-        if size_bytes < 1024:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1024
-    return f"{size_bytes:.1f} TB"
+def get_idm_path():
+    """الحصول على مسار IDM"""
+    idm_paths = [
+        r"C:\Program Files (x86)\Internet Download Manager\IDMan.exe",
+        r"C:\Program Files\Internet Download Manager\IDMan.exe"
+    ]
+    for path in idm_paths:
+        if os.path.exists(path):
+            return path
+    return None
 
-def get_video_info(url, retries=5, delay=2):
+def download_with_idm(url, output_dir):
+    """تحميل الملف باستخدام IDM"""
+    idm_path = get_idm_path()
+    if not idm_path:
+        raise Exception("لم يتم العثور على Internet Download Manager")
+    
+    try:
+        # تشغيل IDM مع رابط التحميل
+        command = [idm_path, '/d', url, '/p', output_dir, '/a']
+        subprocess.run(command, check=True)
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+def get_video_info(url, retries=3):
     """الحصول على معلومات الفيديو"""
     for attempt in range(retries):
         try:
@@ -102,27 +153,14 @@ def get_video_info(url, retries=5, delay=2):
             if stream:
                 return {
                     'title': yt.title,
-                    'stream': stream,
-                    'size': stream.filesize,
+                    'url': stream.url,
                     'resolution': stream.resolution
                 }
         except Exception as e:
             if attempt == retries - 1:
                 raise e
-            time.sleep(delay * (attempt + 1))  # زيادة وقت الانتظار مع كل محاولة
+            time.sleep(5)  # انتظار أطول بين المحاولات
     return None
-
-def download_video(video_info, output_path, retries=5):
-    """تحميل الفيديو مع إعادة المحاولة"""
-    for attempt in range(retries):
-        try:
-            video_info['stream'].download(output_path=output_path)
-            return True, None
-        except Exception as e:
-            if attempt == retries - 1:
-                return False, str(e)
-            time.sleep(2 * (attempt + 1))
-    return False, "فشل التحميل بعد عدة محاولات"
 
 def is_valid_playlist_url(url):
     """التحقق من صحة رابط قائمة التشغيل"""
@@ -130,9 +168,14 @@ def is_valid_playlist_url(url):
     return bool(re.match(playlist_pattern, url))
 
 def download_playlist(url):
-    """تحميل قائمة التشغيل مع عرض التقدم والإحصائيات"""
+    """تحميل قائمة التشغيل"""
     if not is_valid_playlist_url(url):
         st.markdown('<div class="error-box">❌ الرابط غير صالح. يرجى التأكد من أنه رابط قائمة تشغيل YouTube صحيح.</div>', unsafe_allow_html=True)
+        return
+
+    if not is_idm_installed():
+        st.markdown('<div class="error-box">❌ يرجى تثبيت Internet Download Manager أولاً</div>', unsafe_allow_html=True)
+        webbrowser.open('https://www.internetdownloadmanager.com/download.html')
         return
 
     try:
@@ -141,72 +184,53 @@ def download_playlist(url):
             video_urls = playlist.video_urls
 
         if not video_urls:
-            st.markdown('<div class="error-box">❌ لم يتم العثور على أي فيديوهات في قائمة التشغيل. تأكد من أن القائمة عامة وتحتوي على فيديوهات.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="error-box">❌ لم يتم العثور على أي فيديوهات في قائمة التشغيل</div>', unsafe_allow_html=True)
             return
 
         total_videos = len(video_urls)
         st.markdown(f'<div class="success-box">📃 تم العثور على {total_videos} فيديو</div>', unsafe_allow_html=True)
 
-        # إحصائيات التحميل
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            total_size_metric = st.empty()
-        with col2:
-            success_metric = st.empty()
-        with col3:
-            failed_metric = st.empty()
-
         progress_bar = st.progress(0)
         status_text = st.empty()
         
-        successful_downloads = 0
-        failed_downloads = []
-        total_size = 0
+        successful = 0
+        failed = 0
 
         for i, video_url in enumerate(video_urls, 1):
             try:
-                status_text.markdown(f'<div class="info-box">⏳ جاري تحميل الفيديو {i} من {total_videos}</div>', unsafe_allow_html=True)
+                status_text.markdown(f'<div class="info-box">⏳ جاري تحضير الفيديو {i} من {total_videos}</div>', unsafe_allow_html=True)
                 
-                # الحصول على معلومات الفيديو
                 video_info = get_video_info(video_url)
                 if video_info:
-                    success, error = download_video(video_info, download_path)
-                    if success:
-                        successful_downloads += 1
-                        total_size += video_info['size']
-                        st.success(f"✅ تم تحميل: {video_info['title']} ({video_info['resolution']})")
+                    # فتح الرابط في IDM
+                    if download_with_idm(video_info['url'], os.path.abspath(download_path)):
+                        successful += 1
+                        st.success(f"✅ تم إضافة: {video_info['title']} ({video_info['resolution']}) إلى IDM")
                     else:
-                        failed_downloads.append((i, video_info['title'], error))
-                        st.warning(f"⚠️ فشل تحميل: {video_info['title']} - {error}")
-                else:
-                    failed_downloads.append((i, "غير معروف", "فشل في الحصول على معلومات الفيديو"))
-
-                # تحديث الإحصائيات
-                total_size_metric.markdown(f"💾 الحجم الكلي: {format_size(total_size)}")
-                success_metric.markdown(f"✅ تم تحميل: {successful_downloads}")
-                failed_metric.markdown(f"❌ فشل: {len(failed_downloads)}")
+                        failed += 1
+                        st.warning(f"⚠️ فشل إضافة: {video_info['title']}")
                 
-                progress_bar.progress((i) / total_videos)
-                time.sleep(1)  # تأخير بين التحميلات
+                progress_bar.progress(i / total_videos)
+                time.sleep(1)
 
             except Exception as e:
-                failed_downloads.append((i, "غير معروف", str(e)))
+                failed += 1
+                st.error(f"❌ خطأ في الفيديو {i}: {str(e)}")
+                time.sleep(5)  # انتظار أطول عند حدوث خطأ
                 continue
 
-        # عرض النتائج النهائية
-        if successful_downloads > 0:
-            st.markdown(f'<div class="success-box">✅ تم تحميل {successful_downloads} فيديو بنجاح</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="info-box">📁 تم الحفظ في المجلد: {download_path}</div>', unsafe_allow_html=True)
+        if successful > 0:
+            st.markdown(f'<div class="success-box">✅ تم إضافة {successful} فيديو إلى IDM بنجاح</div>', unsafe_allow_html=True)
         
-        if failed_downloads:
-            st.markdown('<div class="error-box">⚠️ الفيديوهات التي لم يتم تحميلها:</div>', unsafe_allow_html=True)
-            for video_num, title, error in failed_downloads:
-                st.write(f"- الفيديو رقم {video_num} ({title}): {error}")
+        if failed > 0:
+            st.markdown(f'<div class="error-box">⚠️ فشل إضافة {failed} فيديو</div>', unsafe_allow_html=True)
 
     except Exception as e:
         st.markdown(f'<div class="error-box">❌ حدث خطأ: {str(e)}</div>', unsafe_allow_html=True)
-        if "429" in str(e):
-            st.warning("⚠️ تم تجاوز حد الطلبات. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.")
+
+# إنشاء مجلد التحميل
+download_path = os.path.join(os.path.expanduser("~"), "Downloads", "YouTube Playlist")
+os.makedirs(download_path, exist_ok=True)
 
 # حقل إدخال الرابط
 playlist_url = st.text_input("", placeholder="🔗 أدخل رابط قائمة التشغيل هنا...")
