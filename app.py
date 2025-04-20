@@ -113,35 +113,81 @@ def is_idm_installed():
         # البحث عن IDM في المسارات المحتملة
         idm_paths = [
             r"C:\Program Files (x86)\Internet Download Manager\IDMan.exe",
-            r"C:\Program Files\Internet Download Manager\IDMan.exe"
+            r"C:\Program Files\Internet Download Manager\IDMan.exe",
+            os.path.join(os.environ.get('PROGRAMFILES', ''), "Internet Download Manager", "IDMan.exe"),
+            os.path.join(os.environ.get('PROGRAMFILES(X86)', ''), "Internet Download Manager", "IDMan.exe"),
+            # البحث في سجل النظام
+            r"C:\Program Files\InternetDownloadManager\IDMan.exe",
+            r"C:\Program Files (x86)\InternetDownloadManager\IDMan.exe",
         ]
-        return any(os.path.exists(path) for path in idm_paths)
+        
+        # البحث عن IDM في جميع المسارات المحتملة
+        for path in idm_paths:
+            if os.path.exists(path):
+                return True
+                
+        # البحث عن IDM في متغيرات النظام
+        system_paths = os.environ.get('PATH', '').split(';')
+        for sys_path in system_paths:
+            idm_path = os.path.join(sys_path, "IDMan.exe")
+            if os.path.exists(idm_path):
+                return True
+                
+        return False
     except:
         return False
 
 def get_idm_path():
     """الحصول على مسار IDM"""
-    idm_paths = [
-        r"C:\Program Files (x86)\Internet Download Manager\IDMan.exe",
-        r"C:\Program Files\Internet Download Manager\IDMan.exe"
-    ]
-    for path in idm_paths:
-        if os.path.exists(path):
-            return path
-    return None
+    try:
+        idm_paths = [
+            r"C:\Program Files (x86)\Internet Download Manager\IDMan.exe",
+            r"C:\Program Files\Internet Download Manager\IDMan.exe",
+            os.path.join(os.environ.get('PROGRAMFILES', ''), "Internet Download Manager", "IDMan.exe"),
+            os.path.join(os.environ.get('PROGRAMFILES(X86)', ''), "Internet Download Manager", "IDMan.exe"),
+            r"C:\Program Files\InternetDownloadManager\IDMan.exe",
+            r"C:\Program Files (x86)\InternetDownloadManager\IDMan.exe",
+        ]
+        
+        # البحث عن IDM في المسارات المحتملة
+        for path in idm_paths:
+            if os.path.exists(path):
+                return path
+                
+        # البحث عن IDM في متغيرات النظام
+        system_paths = os.environ.get('PATH', '').split(';')
+        for sys_path in system_paths:
+            idm_path = os.path.join(sys_path, "IDMan.exe")
+            if os.path.exists(idm_path):
+                return idm_path
+                
+        return None
+    except:
+        return None
 
 def download_with_idm(url, output_dir):
     """تحميل الملف باستخدام IDM"""
     idm_path = get_idm_path()
     if not idm_path:
-        raise Exception("لم يتم العثور على Internet Download Manager")
+        st.error("❌ لم يتم العثور على IDM. المسارات التي تم البحث فيها:")
+        st.code("""
+        1. C:\Program Files (x86)\Internet Download Manager
+        2. C:\Program Files\Internet Download Manager
+        3. C:\Program Files\InternetDownloadManager
+        4. C:\Program Files (x86)\InternetDownloadManager
+        """)
+        return False
     
     try:
         # تشغيل IDM مع رابط التحميل
         command = [idm_path, '/d', url, '/p', output_dir, '/a']
-        subprocess.run(command, check=True)
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
         return True
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
+        st.error(f"❌ خطأ في تشغيل IDM: {str(e)}")
+        return False
+    except Exception as e:
+        st.error(f"❌ خطأ غير متوقع: {str(e)}")
         return False
 
 def get_video_info(url, retries=3):
