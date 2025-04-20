@@ -37,44 +37,6 @@ st.markdown("""
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(0, 114, 255, 0.4);
     }
-    .success-box {
-        background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
-        padding: 1rem;
-        border-radius: 15px;
-        margin: 1rem 0;
-        box-shadow: 0 4px 15px rgba(0, 176, 155, 0.2);
-    }
-    .error-box {
-        background: linear-gradient(135deg, #ff6b6b 0%, #ff4949 100%);
-        padding: 1rem;
-        border-radius: 15px;
-        margin: 1rem 0;
-        box-shadow: 0 4px 15px rgba(255, 73, 73, 0.2);
-    }
-    .info-box {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        padding: 1rem;
-        border-radius: 15px;
-        margin: 1rem 0;
-        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.2);
-    }
-    .title-box {
-        text-align: center;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 20px;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    }
-    .stTextInput > div > div {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 50px;
-        padding: 0.5rem 1rem;
-        border: 2px solid rgba(255, 255, 255, 0.2);
-    }
-    .stTextInput > div > div:focus-within {
-        border-color: #00c6ff;
-    }
     .video-box {
         background: rgba(255, 255, 255, 0.1);
         border-radius: 15px;
@@ -132,121 +94,108 @@ st.markdown("""
         margin: 1rem 0;
         display: block;
         width: 100%;
+        font-size: 1.2rem;
     }
     .copy-all-button:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 15px rgba(252, 70, 107, 0.3);
     }
-    .stats-box {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        padding: 1rem;
-        border-radius: 15px;
-        margin: 1rem 0;
-        text-align: center;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# العنوان الرئيسي
-st.markdown("""
-<div class="title-box">
-    <h1 style='font-size: 2.5rem; margin-bottom: 1rem;'>📥 تحميل قائمة تشغيل YouTube</h1>
-    <p style='font-size: 1.2rem; opacity: 0.9;'>احصل على روابط التحميل المباشرة لقائمة التشغيل</p>
-</div>
-""", unsafe_allow_html=True)
-
-def is_valid_playlist_url(url):
-    """التحقق من صحة رابط قائمة التشغيل"""
-    playlist_pattern = r'(https?://)?(www\.)?(youtube\.com|youtu\.be)/playlist\?list=[\w-]+'
-    return bool(re.match(playlist_pattern, url))
-
-def get_video_info(url, retries=3):
+def get_video_info(url):
     """الحصول على معلومات الفيديو"""
-    for attempt in range(retries):
-        try:
-            time.sleep(2)  # انتظار قبل كل محاولة
-            yt = YouTube(url)
-            stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
-            if stream:
-                return {
-                    'title': yt.title,
-                    'url': stream.url,
-                    'resolution': stream.resolution,
-                    'thumbnail': yt.thumbnail_url
-                }
-        except:
-            if attempt < retries - 1:
-                time.sleep(5)
-            continue
+    try:
+        yt = YouTube(url)
+        stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
+        if stream:
+            return {
+                'title': yt.title,
+                'url': stream.url,
+                'resolution': stream.resolution
+            }
+    except Exception as e:
+        st.write(f"خطأ في الفيديو: {str(e)}")
     return None
 
 def process_playlist(url):
     """معالجة قائمة التشغيل"""
-    if not is_valid_playlist_url(url):
-        st.markdown('<div class="error-box">❌ الرابط غير صالح. يرجى التأكد من أنه رابط قائمة تشغيل YouTube صحيح.</div>', unsafe_allow_html=True)
-        return
-
     try:
-        playlist = Playlist(url)
-        video_urls = playlist.video_urls
-
-        if not video_urls:
-            st.markdown('<div class="error-box">❌ لم يتم العثور على أي فيديوهات في قائمة التشغيل</div>', unsafe_allow_html=True)
-            return
-
-        total_videos = len(video_urls)
-        videos_info = []
+        # التحقق من صحة الرابط
+        if not url.startswith('http'):
+            url = 'https://' + url
         
-        with st.spinner("جاري استخراج الروابط..."):
-            for video_url in video_urls:
-                video_info = get_video_info(video_url)
-                if video_info:
-                    videos_info.append(video_info)
-
-        if videos_info:
-            st.markdown('<div class="video-box">', unsafe_allow_html=True)
+        # محاولة الحصول على معلومات القائمة
+        playlist = Playlist(url)
+        
+        try:
+            # محاولة الوصول إلى عنوان القائمة
+            title = playlist.title
+            st.write(f"قائمة التشغيل: {title}")
+        except:
+            pass
+        
+        # الحصول على روابط الفيديوهات
+        video_urls = list(playlist.video_urls)
+        
+        if not video_urls:
+            st.error("❌ لم يتم العثور على فيديوهات في القائمة")
+            return
             
-            # زر نسخ جميع الروابط
-            all_urls = "\n".join([video['url'] for video in videos_info])
+        st.write(f"تم العثور على {len(video_urls)} فيديو")
+        
+        # معالجة كل فيديو
+        videos_info = []
+        with st.spinner("جاري معالجة الفيديوهات..."):
+            for i, video_url in enumerate(video_urls):
+                info = get_video_info(video_url)
+                if info:
+                    videos_info.append(info)
+                    # عرض معلومات الفيديو مباشرة
+                    st.markdown(f"""
+                    <div class="video-item">
+                        <div class="video-info">
+                            <div class="video-title">{info['title']}</div>
+                            <div class="video-resolution">🎥 {info['resolution']}</div>
+                        </div>
+                        <button class="copy-button" onclick="
+                            navigator.clipboard.writeText('{info['url']}');
+                            this.innerHTML = '✅ تم النسخ!';
+                            setTimeout(() => this.innerHTML = '📋 نسخ الرابط', 2000);
+                        ">
+                            📋 نسخ الرابط
+                        </button>
+                    </div>
+                    """, unsafe_allow_html=True)
+                time.sleep(0.5)  # انتظار قصير بين الطلبات
+        
+        if videos_info:
+            # إضافة زر نسخ جميع الروابط
+            all_urls = "\n".join([v['url'] for v in videos_info])
             st.markdown(f"""
             <button class="copy-all-button" onclick="
                 navigator.clipboard.writeText('{all_urls}');
                 this.innerHTML = '✅ تم نسخ جميع الروابط!';
-                setTimeout(() => this.innerHTML = '📋 نسخ جميع الروابط', 2000);
+                setTimeout(() => this.innerHTML = '📋 نسخ جميع الروابط ({len(videos_info)})', 2000);
             ">
-                📋 نسخ جميع الروابط ({len(videos_info)} رابط)
+                📋 نسخ جميع الروابط ({len(videos_info)})
             </button>
             """, unsafe_allow_html=True)
             
-            # عرض معلومات كل فيديو
-            for video in videos_info:
-                st.markdown(f"""
-                <div class="video-item">
-                    <div class="video-info">
-                        <div class="video-title">{video['title']}</div>
-                        <div class="video-resolution">🎥 {video['resolution']}</div>
-                    </div>
-                    <button class="copy-button" onclick="
-                        navigator.clipboard.writeText('{video['url']}');
-                        this.innerHTML = '✅ تم النسخ!';
-                        setTimeout(() => this.innerHTML = '📋 نسخ الرابط', 2000);
-                    ">
-                        📋 نسخ الرابط
-                    </button>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
-
     except Exception as e:
-        st.markdown('<div class="error-box">❌ حدث خطأ في معالجة قائمة التشغيل</div>', unsafe_allow_html=True)
+        st.error(f"حدث خطأ: {str(e)}")
+        st.write("الرجاء التأكد من صحة الرابط وحاول مرة أخرى")
+
+# واجهة المستخدم
+st.title("📥 تحميل قائمة تشغيل YouTube")
+st.write("قم بلصق رابط قائمة التشغيل للحصول على روابط التحميل المباشرة")
 
 # حقل إدخال الرابط
 playlist_url = st.text_input("", placeholder="🔗 أدخل رابط قائمة التشغيل هنا...")
 
-# زر التحميل
+# زر استخراج الروابط
 if st.button("🚀 استخراج روابط التحميل"):
     if playlist_url.strip():
-        process_playlist(playlist_url)
+        process_playlist(playlist_url.strip())
     else:
-        st.markdown('<div class="error-box">⚠️ الرجاء إدخال رابط صالح.</div>', unsafe_allow_html=True)
+        st.warning("⚠️ الرجاء إدخال رابط قائمة التشغيل")
