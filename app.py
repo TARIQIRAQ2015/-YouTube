@@ -4,7 +4,6 @@ import os
 import re
 import time
 from datetime import datetime
-import pyperclip
 
 # تكوين الصفحة
 st.set_page_config(
