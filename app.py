@@ -4,6 +4,7 @@ import os
 import re
 import time
 from datetime import datetime
+import random
 
 # تكوين الصفحة
 st.set_page_config(
@@ -106,7 +107,12 @@ st.markdown("""
 def get_video_info(url):
     """الحصول على معلومات الفيديو"""
     try:
-        yt = YouTube(url)
+        # إضافة وقت انتظار عشوائي بين 3 و 6 ثواني
+        time.sleep(random.uniform(3, 6))
+        
+        # إضافة User-Agent للطلبات
+        yt = YouTube(url, use_oauth=True, allow_oauth_cache=True)
+        yt.bypass_age_gate()
         stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
         if stream:
             return {
@@ -115,7 +121,21 @@ def get_video_info(url):
                 'resolution': stream.resolution
             }
     except Exception as e:
-        st.write(f"خطأ في الفيديو: {str(e)}")
+        if 'HTTP Error 429' in str(e):
+            # في حالة وجود خطأ 429، ننتظر وقتاً أطول
+            time.sleep(random.uniform(10, 15))
+            try:
+                yt = YouTube(url, use_oauth=True, allow_oauth_cache=True)
+                yt.bypass_age_gate()
+                stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
+                if stream:
+                    return {
+                        'title': yt.title,
+                        'url': stream.url,
+                        'resolution': stream.resolution
+                    }
+            except:
+                pass
     return None
 
 def process_playlist(url):
@@ -127,6 +147,7 @@ def process_playlist(url):
         
         # محاولة الحصول على معلومات القائمة
         playlist = Playlist(url)
+        playlist._video_regex = re.compile(r"\"url\":\"(/watch\?v=[\w-]*)")  # تحديث التعبير النمطي
         
         try:
             # محاولة الوصول إلى عنوان القائمة
@@ -167,7 +188,10 @@ def process_playlist(url):
                         </button>
                     </div>
                     """, unsafe_allow_html=True)
-                time.sleep(0.5)  # انتظار قصير بين الطلبات
+                
+                # انتظار بين كل فيديو وآخر
+                if i < len(video_urls) - 1:  # لا داعي للانتظار بعد آخر فيديو
+                    time.sleep(random.uniform(2, 4))
         
         if videos_info:
             # إضافة زر نسخ جميع الروابط
