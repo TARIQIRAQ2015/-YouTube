@@ -3,9 +3,7 @@ from pytube import Playlist, YouTube
 import os
 import re
 import time
-import subprocess
-import webbrowser
-from urllib.parse import quote
+from datetime import datetime
 
 # تكوين الصفحة
 st.set_page_config(
@@ -96,6 +94,20 @@ st.markdown("""
     .progress-bar > div {
         background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%) !important;
     }
+    .url-box {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 0.5rem 0;
+        word-break: break-all;
+    }
+    .instruction-box {
+        background: linear-gradient(135deg, #fc466b 0%, #3f5efb 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin: 1rem 0;
+        box-shadow: 0 4px 15px rgba(252, 70, 107, 0.2);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -103,92 +115,14 @@ st.markdown("""
 st.markdown("""
 <div class="title-box">
     <h1 style='font-size: 2.5rem; margin-bottom: 1rem;'>📥 تحميل قائمة تشغيل YouTube</h1>
-    <p style='font-size: 1.2rem; opacity: 0.9;'>قم بلصق رابط قائمة التشغيل للتحميل عبر Internet Download Manager</p>
+    <p style='font-size: 1.2rem; opacity: 0.9;'>قم بلصق رابط قائمة التشغيل للحصول على روابط التحميل</p>
 </div>
 """, unsafe_allow_html=True)
 
-def is_idm_installed():
-    """التحقق من تثبيت Internet Download Manager"""
-    try:
-        # البحث عن IDM في المسارات المحتملة
-        idm_paths = [
-            r"C:\Program Files (x86)\Internet Download Manager\IDMan.exe",
-            r"C:\Program Files\Internet Download Manager\IDMan.exe",
-            os.path.join(os.environ.get('PROGRAMFILES', ''), "Internet Download Manager", "IDMan.exe"),
-            os.path.join(os.environ.get('PROGRAMFILES(X86)', ''), "Internet Download Manager", "IDMan.exe"),
-            # البحث في سجل النظام
-            r"C:\Program Files\InternetDownloadManager\IDMan.exe",
-            r"C:\Program Files (x86)\InternetDownloadManager\IDMan.exe",
-        ]
-        
-        # البحث عن IDM في جميع المسارات المحتملة
-        for path in idm_paths:
-            if os.path.exists(path):
-                return True
-                
-        # البحث عن IDM في متغيرات النظام
-        system_paths = os.environ.get('PATH', '').split(';')
-        for sys_path in system_paths:
-            idm_path = os.path.join(sys_path, "IDMan.exe")
-            if os.path.exists(idm_path):
-                return True
-                
-        return False
-    except:
-        return False
-
-def get_idm_path():
-    """الحصول على مسار IDM"""
-    try:
-        idm_paths = [
-            r"C:\Program Files (x86)\Internet Download Manager\IDMan.exe",
-            r"C:\Program Files\Internet Download Manager\IDMan.exe",
-            os.path.join(os.environ.get('PROGRAMFILES', ''), "Internet Download Manager", "IDMan.exe"),
-            os.path.join(os.environ.get('PROGRAMFILES(X86)', ''), "Internet Download Manager", "IDMan.exe"),
-            r"C:\Program Files\InternetDownloadManager\IDMan.exe",
-            r"C:\Program Files (x86)\InternetDownloadManager\IDMan.exe",
-        ]
-        
-        # البحث عن IDM في المسارات المحتملة
-        for path in idm_paths:
-            if os.path.exists(path):
-                return path
-                
-        # البحث عن IDM في متغيرات النظام
-        system_paths = os.environ.get('PATH', '').split(';')
-        for sys_path in system_paths:
-            idm_path = os.path.join(sys_path, "IDMan.exe")
-            if os.path.exists(idm_path):
-                return idm_path
-                
-        return None
-    except:
-        return None
-
-def download_with_idm(url, output_dir):
-    """تحميل الملف باستخدام IDM"""
-    idm_path = get_idm_path()
-    if not idm_path:
-        st.error("❌ لم يتم العثور على IDM. المسارات التي تم البحث فيها:")
-        st.code("""
-        1. C:\Program Files (x86)\Internet Download Manager
-        2. C:\Program Files\Internet Download Manager
-        3. C:\Program Files\InternetDownloadManager
-        4. C:\Program Files (x86)\InternetDownloadManager
-        """)
-        return False
-    
-    try:
-        # تشغيل IDM مع رابط التحميل
-        command = [idm_path, '/d', url, '/p', output_dir, '/a']
-        result = subprocess.run(command, check=True, capture_output=True, text=True)
-        return True
-    except subprocess.CalledProcessError as e:
-        st.error(f"❌ خطأ في تشغيل IDM: {str(e)}")
-        return False
-    except Exception as e:
-        st.error(f"❌ خطأ غير متوقع: {str(e)}")
-        return False
+def is_valid_playlist_url(url):
+    """التحقق من صحة رابط قائمة التشغيل"""
+    playlist_pattern = r'(https?://)?(www\.)?(youtube\.com|youtu\.be)/playlist\?list=[\w-]+'
+    return bool(re.match(playlist_pattern, url))
 
 def get_video_info(url, retries=3):
     """الحصول على معلومات الفيديو"""
@@ -205,23 +139,24 @@ def get_video_info(url, retries=3):
         except Exception as e:
             if attempt == retries - 1:
                 raise e
-            time.sleep(5)  # انتظار أطول بين المحاولات
+            time.sleep(5)
     return None
 
-def is_valid_playlist_url(url):
-    """التحقق من صحة رابط قائمة التشغيل"""
-    playlist_pattern = r'(https?://)?(www\.)?(youtube\.com|youtu\.be)/playlist\?list=[\w-]+'
-    return bool(re.match(playlist_pattern, url))
+def create_download_file(videos_info, file_path):
+    """إنشاء ملف التحميل"""
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            for video in videos_info:
+                f.write(f"{video['url']}\n")
+        return True
+    except Exception as e:
+        st.error(f"❌ خطأ في إنشاء ملف التحميل: {str(e)}")
+        return False
 
-def download_playlist(url):
-    """تحميل قائمة التشغيل"""
+def process_playlist(url):
+    """معالجة قائمة التشغيل"""
     if not is_valid_playlist_url(url):
         st.markdown('<div class="error-box">❌ الرابط غير صالح. يرجى التأكد من أنه رابط قائمة تشغيل YouTube صحيح.</div>', unsafe_allow_html=True)
-        return
-
-    if not is_idm_installed():
-        st.markdown('<div class="error-box">❌ يرجى تثبيت Internet Download Manager أولاً</div>', unsafe_allow_html=True)
-        webbrowser.open('https://www.internetdownloadmanager.com/download.html')
         return
 
     try:
@@ -239,7 +174,7 @@ def download_playlist(url):
         progress_bar = st.progress(0)
         status_text = st.empty()
         
-        successful = 0
+        videos_info = []
         failed = 0
 
         for i, video_url in enumerate(video_urls, 1):
@@ -248,13 +183,11 @@ def download_playlist(url):
                 
                 video_info = get_video_info(video_url)
                 if video_info:
-                    # فتح الرابط في IDM
-                    if download_with_idm(video_info['url'], os.path.abspath(download_path)):
-                        successful += 1
-                        st.success(f"✅ تم إضافة: {video_info['title']} ({video_info['resolution']}) إلى IDM")
-                    else:
-                        failed += 1
-                        st.warning(f"⚠️ فشل إضافة: {video_info['title']}")
+                    videos_info.append(video_info)
+                    st.markdown(f'<div class="url-box">✅ {video_info["title"]} ({video_info["resolution"]})</div>', unsafe_allow_html=True)
+                else:
+                    failed += 1
+                    st.warning(f"⚠️ تعذر الحصول على رابط الفيديو رقم {i}")
                 
                 progress_bar.progress(i / total_videos)
                 time.sleep(1)
@@ -262,28 +195,42 @@ def download_playlist(url):
             except Exception as e:
                 failed += 1
                 st.error(f"❌ خطأ في الفيديو {i}: {str(e)}")
-                time.sleep(5)  # انتظار أطول عند حدوث خطأ
+                time.sleep(2)
                 continue
 
-        if successful > 0:
-            st.markdown(f'<div class="success-box">✅ تم إضافة {successful} فيديو إلى IDM بنجاح</div>', unsafe_allow_html=True)
-        
+        if videos_info:
+            # إنشاء اسم الملف بناءً على التاريخ والوقت
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            file_name = f"youtube_links_{timestamp}.txt"
+            file_path = os.path.join(os.path.expanduser("~"), "Downloads", file_name)
+            
+            if create_download_file(videos_info, file_path):
+                st.markdown(f'<div class="success-box">✅ تم إنشاء ملف الروابط بنجاح!</div>', unsafe_allow_html=True)
+                st.markdown("""
+                <div class="instruction-box">
+                    <h3>📝 خطوات التحميل:</h3>
+                    <ol>
+                        <li>افتح برنامج Internet Download Manager</li>
+                        <li>اضغط على Tasks > Import > Import URLs from file</li>
+                        <li>اختر الملف من مجلد Downloads باسم youtube_links_[التاريخ].txt</li>
+                        <li>اضغط OK لبدء التحميل</li>
+                    </ol>
+                </div>
+                """, unsafe_allow_html=True)
+                st.info(f"📁 مسار الملف: {file_path}")
+
         if failed > 0:
-            st.markdown(f'<div class="error-box">⚠️ فشل إضافة {failed} فيديو</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="error-box">⚠️ تعذر الحصول على {failed} روابط</div>', unsafe_allow_html=True)
 
     except Exception as e:
         st.markdown(f'<div class="error-box">❌ حدث خطأ: {str(e)}</div>', unsafe_allow_html=True)
-
-# إنشاء مجلد التحميل
-download_path = os.path.join(os.path.expanduser("~"), "Downloads", "YouTube Playlist")
-os.makedirs(download_path, exist_ok=True)
 
 # حقل إدخال الرابط
 playlist_url = st.text_input("", placeholder="🔗 أدخل رابط قائمة التشغيل هنا...")
 
 # زر التحميل
-if st.button("🚀 تحميل القائمة"):
+if st.button("🚀 استخراج روابط التحميل"):
     if playlist_url.strip():
-        download_playlist(playlist_url)
+        process_playlist(playlist_url)
     else:
         st.markdown('<div class="error-box">⚠️ الرجاء إدخال رابط صالح.</div>', unsafe_allow_html=True)
