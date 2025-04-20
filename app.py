@@ -164,6 +164,7 @@ def get_video_info(url, retries=3):
     """الحصول على معلومات الفيديو"""
     for attempt in range(retries):
         try:
+            time.sleep(2)  # انتظار قبل كل محاولة
             yt = YouTube(url)
             stream = yt.streams.filter(progressive=True, file_extension='mp4').order_by('resolution').desc().first()
             if stream:
@@ -173,10 +174,10 @@ def get_video_info(url, retries=3):
                     'resolution': stream.resolution,
                     'thumbnail': yt.thumbnail_url
                 }
-        except Exception as e:
-            if attempt == retries - 1:
-                raise e
-            time.sleep(5)
+        except:
+            if attempt < retries - 1:
+                time.sleep(5)
+            continue
     return None
 
 def process_playlist(url):
@@ -186,42 +187,21 @@ def process_playlist(url):
         return
 
     try:
-        with st.spinner("🔄 جاري التحقق من قائمة التشغيل..."):
-            playlist = Playlist(url)
-            video_urls = playlist.video_urls
+        playlist = Playlist(url)
+        video_urls = playlist.video_urls
 
         if not video_urls:
             st.markdown('<div class="error-box">❌ لم يتم العثور على أي فيديوهات في قائمة التشغيل</div>', unsafe_allow_html=True)
             return
 
         total_videos = len(video_urls)
-        st.markdown(f'<div class="stats-box">📊 تم العثور على {total_videos} فيديو</div>', unsafe_allow_html=True)
-
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        
         videos_info = []
-        failed = 0
-
-        for i, video_url in enumerate(video_urls, 1):
-            try:
-                status_text.markdown(f'<div class="info-box">⏳ جاري تحضير الفيديو {i} من {total_videos}</div>', unsafe_allow_html=True)
-                
+        
+        with st.spinner("جاري استخراج الروابط..."):
+            for video_url in video_urls:
                 video_info = get_video_info(video_url)
                 if video_info:
                     videos_info.append(video_info)
-                else:
-                    failed += 1
-                    st.warning(f"⚠️ تعذر الحصول على رابط الفيديو رقم {i}")
-                
-                progress_bar.progress(i / total_videos)
-                time.sleep(1)
-
-            except Exception as e:
-                failed += 1
-                st.error(f"❌ خطأ في الفيديو {i}: {str(e)}")
-                time.sleep(2)
-                continue
 
         if videos_info:
             st.markdown('<div class="video-box">', unsafe_allow_html=True)
@@ -234,7 +214,7 @@ def process_playlist(url):
                 this.innerHTML = '✅ تم نسخ جميع الروابط!';
                 setTimeout(() => this.innerHTML = '📋 نسخ جميع الروابط', 2000);
             ">
-                📋 نسخ جميع الروابط
+                📋 نسخ جميع الروابط ({len(videos_info)} رابط)
             </button>
             """, unsafe_allow_html=True)
             
@@ -258,11 +238,8 @@ def process_playlist(url):
             
             st.markdown('</div>', unsafe_allow_html=True)
 
-        if failed > 0:
-            st.markdown(f'<div class="error-box">⚠️ تعذر الحصول على {failed} روابط</div>', unsafe_allow_html=True)
-
     except Exception as e:
-        st.markdown(f'<div class="error-box">❌ حدث خطأ: {str(e)}</div>', unsafe_allow_html=True)
+        st.markdown('<div class="error-box">❌ حدث خطأ في معالجة قائمة التشغيل</div>', unsafe_allow_html=True)
 
 # حقل إدخال الرابط
 playlist_url = st.text_input("", placeholder="🔗 أدخل رابط قائمة التشغيل هنا...")
