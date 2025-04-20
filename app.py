@@ -32,6 +32,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# تعيين منفذ مختلف
+if not os.environ.get("STREAMLIT_SERVER_PORT"):
+    os.environ["STREAMLIT_SERVER_PORT"] = "8502"
+
 # تخصيص CSS
 st.markdown("""
 <style>
