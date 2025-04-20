@@ -4,6 +4,7 @@ import os
 import re
 import time
 from datetime import datetime
+import pyperclip
 
 # تكوين الصفحة
 st.set_page_config(
@@ -75,38 +76,74 @@ st.markdown("""
     .stTextInput > div > div:focus-within {
         border-color: #00c6ff;
     }
-    .download-stats {
+    .video-box {
         background: rgba(255, 255, 255, 0.1);
         border-radius: 15px;
         padding: 1.5rem;
         margin: 1rem 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
     }
-    .stat-card {
+    .video-item {
         background: rgba(255, 255, 255, 0.05);
         border-radius: 10px;
         padding: 1rem;
-        text-align: center;
-    }
-    .progress-bar {
-        border-radius: 50px !important;
-        height: 20px !important;
-    }
-    .progress-bar > div {
-        background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%) !important;
-    }
-    .url-box {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 1rem;
-        border-radius: 10px;
         margin: 0.5rem 0;
-        word-break: break-all;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
     }
-    .instruction-box {
+    .video-info {
+        flex: 1;
+        min-width: 200px;
+    }
+    .video-title {
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    .video-resolution {
+        color: #00c6ff;
+        font-size: 0.9rem;
+    }
+    .copy-button {
+        background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .copy-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 114, 255, 0.3);
+    }
+    .copy-all-button {
         background: linear-gradient(135deg, #fc466b 0%, #3f5efb 100%);
-        padding: 1.5rem;
+        color: white;
+        border: none;
+        padding: 1rem 2rem;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        margin: 1rem 0;
+        display: block;
+        width: 100%;
+    }
+    .copy-all-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(252, 70, 107, 0.3);
+    }
+    .stats-box {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        padding: 1rem;
         border-radius: 15px;
         margin: 1rem 0;
-        box-shadow: 0 4px 15px rgba(252, 70, 107, 0.2);
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -115,7 +152,7 @@ st.markdown("""
 st.markdown("""
 <div class="title-box">
     <h1 style='font-size: 2.5rem; margin-bottom: 1rem;'>📥 تحميل قائمة تشغيل YouTube</h1>
-    <p style='font-size: 1.2rem; opacity: 0.9;'>قم بلصق رابط قائمة التشغيل للحصول على روابط التحميل</p>
+    <p style='font-size: 1.2rem; opacity: 0.9;'>احصل على روابط التحميل المباشرة لقائمة التشغيل</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -134,24 +171,14 @@ def get_video_info(url, retries=3):
                 return {
                     'title': yt.title,
                     'url': stream.url,
-                    'resolution': stream.resolution
+                    'resolution': stream.resolution,
+                    'thumbnail': yt.thumbnail_url
                 }
         except Exception as e:
             if attempt == retries - 1:
                 raise e
             time.sleep(5)
     return None
-
-def create_download_file(videos_info, file_path):
-    """إنشاء ملف التحميل"""
-    try:
-        with open(file_path, 'w', encoding='utf-8') as f:
-            for video in videos_info:
-                f.write(f"{video['url']}\n")
-        return True
-    except Exception as e:
-        st.error(f"❌ خطأ في إنشاء ملف التحميل: {str(e)}")
-        return False
 
 def process_playlist(url):
     """معالجة قائمة التشغيل"""
@@ -169,7 +196,7 @@ def process_playlist(url):
             return
 
         total_videos = len(video_urls)
-        st.markdown(f'<div class="success-box">📃 تم العثور على {total_videos} فيديو</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="stats-box">📊 تم العثور على {total_videos} فيديو</div>', unsafe_allow_html=True)
 
         progress_bar = st.progress(0)
         status_text = st.empty()
@@ -184,7 +211,6 @@ def process_playlist(url):
                 video_info = get_video_info(video_url)
                 if video_info:
                     videos_info.append(video_info)
-                    st.markdown(f'<div class="url-box">✅ {video_info["title"]} ({video_info["resolution"]})</div>', unsafe_allow_html=True)
                 else:
                     failed += 1
                     st.warning(f"⚠️ تعذر الحصول على رابط الفيديو رقم {i}")
@@ -199,25 +225,39 @@ def process_playlist(url):
                 continue
 
         if videos_info:
-            # إنشاء اسم الملف بناءً على التاريخ والوقت
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            file_name = f"youtube_links_{timestamp}.txt"
-            file_path = os.path.join(os.path.expanduser("~"), "Downloads", file_name)
+            st.markdown('<div class="video-box">', unsafe_allow_html=True)
             
-            if create_download_file(videos_info, file_path):
-                st.markdown(f'<div class="success-box">✅ تم إنشاء ملف الروابط بنجاح!</div>', unsafe_allow_html=True)
-                st.markdown("""
-                <div class="instruction-box">
-                    <h3>📝 خطوات التحميل:</h3>
-                    <ol>
-                        <li>افتح برنامج Internet Download Manager</li>
-                        <li>اضغط على Tasks > Import > Import URLs from file</li>
-                        <li>اختر الملف من مجلد Downloads باسم youtube_links_[التاريخ].txt</li>
-                        <li>اضغط OK لبدء التحميل</li>
-                    </ol>
+            # زر نسخ جميع الروابط
+            all_urls = "\n".join([video['url'] for video in videos_info])
+            st.markdown(f"""
+            <button class="copy-all-button" onclick="
+                navigator.clipboard.writeText('{all_urls}');
+                this.innerHTML = '✅ تم نسخ جميع الروابط!';
+                setTimeout(() => this.innerHTML = '📋 نسخ جميع الروابط', 2000);
+            ">
+                📋 نسخ جميع الروابط
+            </button>
+            """, unsafe_allow_html=True)
+            
+            # عرض معلومات كل فيديو
+            for video in videos_info:
+                st.markdown(f"""
+                <div class="video-item">
+                    <div class="video-info">
+                        <div class="video-title">{video['title']}</div>
+                        <div class="video-resolution">🎥 {video['resolution']}</div>
+                    </div>
+                    <button class="copy-button" onclick="
+                        navigator.clipboard.writeText('{video['url']}');
+                        this.innerHTML = '✅ تم النسخ!';
+                        setTimeout(() => this.innerHTML = '📋 نسخ الرابط', 2000);
+                    ">
+                        📋 نسخ الرابط
+                    </button>
                 </div>
                 """, unsafe_allow_html=True)
-                st.info(f"📁 مسار الملف: {file_path}")
+            
+            st.markdown('</div>', unsafe_allow_html=True)
 
         if failed > 0:
             st.markdown(f'<div class="error-box">⚠️ تعذر الحصول على {failed} روابط</div>', unsafe_allow_html=True)
