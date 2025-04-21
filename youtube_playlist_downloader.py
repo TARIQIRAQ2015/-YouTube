@@ -241,10 +241,14 @@ class YoutubePlaylistDownloader(ctk.CTk):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
         
-        main_frame = ctk.CTkFrame(self)
-        main_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-        main_frame.grid_columnconfigure(0, weight=1)
-        main_frame.grid_rowconfigure(1, weight=1)
+        # إنشاء شريط القوائم
+        self.create_menu()
+        
+        # الإطار الرئيسي
+        self.main_frame = ctk.CTkFrame(self)
+        self.main_frame.grid(row=0, column=0, padx=15, pady=15, sticky="nsew")
+        self.main_frame.grid_columnconfigure(0, weight=1)
+        self.main_frame.grid_rowconfigure(1, weight=1)
         
         # إطار إدخال الرابط
         input_frame = ctk.CTkFrame(main_frame)
