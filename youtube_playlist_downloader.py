@@ -473,82 +473,167 @@ class YoutubePlaylistDownloader(ctk.CTk):
         except Exception as e:
             print(f"خطأ في القص: {e}")
         
-        # إطار الخيارات
+        # إطار الخيارات بتصميم محسن
         options_frame = ctk.CTkFrame(input_frame)
-        options_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=10, sticky="ew")
+        options_frame.grid(row=2, column=0, columnspan=3, padx=15, pady=(5, 15), sticky="ew")
         options_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
         
-        # اختيار الجودة
-        quality_label = ctk.CTkLabel(options_frame, text="الجودة:")
-        quality_label.grid(row=0, column=0, padx=10, pady=10, sticky="e")
+        # اختيار الجودة بتصميم محسن
+        quality_label = ctk.CTkLabel(options_frame, text=self.get_text("quality"), font=ctk.CTkFont(size=14))
+        quality_label.grid(row=0, column=0, padx=15, pady=15, sticky="e")
         
         quality_options = ["144p", "240p", "360p", "480p", "720p", "1080p", "1440p", "2160p", "mp3"]
         quality_menu = ctk.CTkOptionMenu(
             options_frame, 
             values=quality_options,
-            variable=self.selected_quality
+            variable=self.selected_quality,
+            width=120,
+            height=32,
+            font=ctk.CTkFont(size=13),
+            dropdown_font=ctk.CTkFont(size=13)
         )
-        quality_menu.grid(row=0, column=1, padx=10, pady=10, sticky="w")
+        quality_menu.grid(row=0, column=1, padx=15, pady=15, sticky="w")
         
-        # زر اختيار مجلد الحفظ
+        # زر اختيار مجلد الحفظ بتصميم محسن
         folder_button = ctk.CTkButton(
             options_frame, 
-            text="اختيار مجلد الحفظ", 
-            command=self.select_output_folder
+            text=self.get_text("select_folder"), 
+            command=self.select_output_folder,
+            height=32,
+            font=ctk.CTkFont(size=13),
+            corner_radius=8
         )
-        folder_button.grid(row=0, column=2, padx=10, pady=10)
+        folder_button.grid(row=0, column=2, padx=15, pady=15)
         
-        # زر تبديل اللغة
+        # زر تبديل اللغة بتصميم محسن
         language_button = ctk.CTkButton(
             options_frame, 
-            text="English/عربي", 
+            text=self.get_text("switch_language"), 
             command=self.toggle_language,
-            width=100
+            width=100,
+            height=32,
+            font=ctk.CTkFont(size=13),
+            corner_radius=8
         )
-        language_button.grid(row=0, column=3, padx=10, pady=10)
+        language_button.grid(row=0, column=3, padx=15, pady=15)
         
-        # إطار عرض الفيديوهات
-        self.videos_frame = ctk.CTkScrollableFrame(main_frame)
-        self.videos_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        # أزرار تحديد الكل / إلغاء تحديد الكل
+        select_frame = ctk.CTkFrame(options_frame)
+        select_frame.grid(row=1, column=0, columnspan=4, padx=15, pady=(0, 15), sticky="ew")
+        select_frame.grid_columnconfigure((0, 1), weight=1)
+        
+        select_all_button = ctk.CTkButton(
+            select_frame, 
+            text=self.get_text("select_all"), 
+            command=self.select_all_videos,
+            height=30,
+            font=ctk.CTkFont(size=12),
+            corner_radius=6
+        )
+        select_all_button.grid(row=0, column=0, padx=15, pady=5, sticky="ew")
+        
+        deselect_all_button = ctk.CTkButton(
+            select_frame, 
+            text=self.get_text("deselect_all"), 
+            command=self.deselect_all_videos,
+            height=30,
+            font=ctk.CTkFont(size=12),
+            corner_radius=6
+        )
+        deselect_all_button.grid(row=0, column=1, padx=15, pady=5, sticky="ew")
+        
+        # إطار عرض الفيديوهات بتصميم محسن
+        videos_container = ctk.CTkFrame(self.main_frame)
+        videos_container.grid(row=1, column=0, padx=15, pady=15, sticky="nsew")
+        videos_container.grid_columnconfigure(0, weight=1)
+        videos_container.grid_rowconfigure(0, weight=1)
+        
+        # عنوان قسم الفيديوهات
+        videos_title = ctk.CTkLabel(
+            videos_container,
+            text="قائمة الفيديوهات",
+            font=ctk.CTkFont(size=18, weight="bold")
+        )
+        videos_title.grid(row=0, column=0, padx=15, pady=(15, 5), sticky="w")
+        
+        # إطار قابل للتمرير لعرض الفيديوهات
+        self.videos_frame = ctk.CTkScrollableFrame(videos_container, corner_radius=10)
+        self.videos_frame.grid(row=1, column=0, padx=15, pady=15, sticky="nsew")
         self.videos_frame.grid_columnconfigure(0, weight=1)
         
-        # إطار الأزرار السفلية
-        bottom_frame = ctk.CTkFrame(main_frame)
-        bottom_frame.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
-        bottom_frame.grid_columnconfigure((0, 1, 2), weight=1)
+        # إطار الأزرار السفلية بتصميم محسن
+        bottom_frame = ctk.CTkFrame(self.main_frame)
+        bottom_frame.grid(row=2, column=0, padx=15, pady=15, sticky="ew")
+        bottom_frame.grid_columnconfigure((0, 1), weight=1)
+        bottom_frame.grid_columnconfigure(2, weight=2)
         
-        # زر توليد ملف الروابط
+        # زر توليد ملف الروابط بتصميم محسن
         generate_button = ctk.CTkButton(
             bottom_frame, 
-            text="توليد ملف الروابط (IDM)", 
-            command=self.generate_links_file
+            text=self.get_text("generate_links"), 
+            command=self.generate_links_file,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            height=40,
+            corner_radius=10,
+            fg_color="#2F58CD",
+            hover_color="#1A3B98"
         )
-        generate_button.grid(row=0, column=0, padx=10, pady=10)
+        generate_button.grid(row=0, column=0, padx=15, pady=15, sticky="ew")
         
-        # زر تحميل مباشر
+        # زر تحميل مباشر بتصميم محسن
         download_button = ctk.CTkButton(
             bottom_frame, 
-            text="تحميل مباشر", 
-            command=self.download_videos
+            text=self.get_text("download_direct"), 
+            command=self.download_videos,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            height=40,
+            corner_radius=10,
+            fg_color="#2D9596",
+            hover_color="#1A6F70"
         )
-        download_button.grid(row=0, column=1, padx=10, pady=10)
+        download_button.grid(row=0, column=1, padx=15, pady=15, sticky="ew")
         
-        # شريط الحالة
-        self.status_var = tk.StringVar(value="جاهز")
-        status_label = ctk.CTkLabel(bottom_frame, textvariable=self.status_var)
-        status_label.grid(row=0, column=2, padx=10, pady=10)
+        # إطار الحالة
+        status_frame = ctk.CTkFrame(bottom_frame)
+        status_frame.grid(row=0, column=2, padx=15, pady=15, sticky="ew")
+        status_frame.grid_columnconfigure(0, weight=1)
         
-        # شريط التقدم
-        self.progress_bar = ctk.CTkProgressBar(main_frame)
-        self.progress_bar.grid(row=3, column=0, padx=10, pady=(0, 10), sticky="ew")
+        # شريط الحالة بتصميم محسن
+        self.status_var = tk.StringVar(value=self.get_text("ready"))
+        status_label = ctk.CTkLabel(
+            status_frame, 
+            textvariable=self.status_var,
+            font=ctk.CTkFont(size=13)
+        )
+        status_label.grid(row=0, column=0, padx=10, pady=(10, 5), sticky="ew")
+        
+        # شريط التقدم بتصميم محسن
+        self.progress_bar = ctk.CTkProgressBar(status_frame, height=15, corner_radius=5)
+        self.progress_bar.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="ew")
         self.progress_bar.set(0)
         
+    def select_all_videos(self):
+        """تحديد جميع الفيديوهات"""
+        for video in self.videos_info:
+            if 'selected' in video and isinstance(video['selected'], tk.BooleanVar):
+                video['selected'].set(True)
+    
+    def deselect_all_videos(self):
+        """إلغاء تحديد جميع الفيديوهات"""
+        for video in self.videos_info:
+            if 'selected' in video and isinstance(video['selected'], tk.BooleanVar):
+                video['selected'].set(False)
+    
     def show_context_menu(self, event):
         """عرض قائمة النقر بزر الماوس الأيمن"""
         context_menu = tk.Menu(self, tearoff=0)
-        context_menu.add_command(label="لصق", command=lambda: event.widget.paste())
-        context_menu.add_command(label="نسخ", command=lambda: event.widget.copy())
-        context_menu.add_command(label="قص", command=lambda: event.widget.cut())
+        
+        # إضافة عناصر القائمة باللغة المناسبة
+        context_menu.add_command(label=self.get_text("paste"), command=lambda: self.paste_clipboard(event.widget))
+        context_menu.add_command(label=self.get_text("copy"), command=lambda: self.copy_to_clipboard(event.widget.get()))
+        context_menu.add_command(label=self.get_text("cut"), command=lambda: self.cut_from_entry(event.widget))
+        
+        # عرض القائمة في موقع المؤشر
         context_menu.post(event.x_root, event.y_root)
     
     def select_output_folder(self):
