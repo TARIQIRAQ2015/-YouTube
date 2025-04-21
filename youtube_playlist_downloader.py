@@ -250,33 +250,228 @@ class YoutubePlaylistDownloader(ctk.CTk):
         self.main_frame.grid_columnconfigure(0, weight=1)
         self.main_frame.grid_rowconfigure(1, weight=1)
         
+    def create_menu(self):
+        """إنشاء شريط القوائم"""
+        menu_bar = tk.Menu(self)
+        self.configure(menu=menu_bar)
+        
+        # قائمة الملف
+        file_menu = tk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label=self.get_text("file") if hasattr(self, "get_text") else "ملف", menu=file_menu)
+        file_menu.add_command(label=self.get_text("settings") if hasattr(self, "get_text") else "الإعدادات", command=self.open_settings)
+        file_menu.add_separator()
+        file_menu.add_command(label=self.get_text("exit") if hasattr(self, "get_text") else "خروج", command=self.quit)
+        
+        # قائمة المظهر
+        appearance_menu = tk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label=self.get_text("appearance") if hasattr(self, "get_text") else "المظهر", menu=appearance_menu)
+        appearance_menu.add_command(label=self.get_text("light_mode") if hasattr(self, "get_text") else "الوضع الفاتح", command=lambda: self.change_appearance_mode("Light"))
+        appearance_menu.add_command(label=self.get_text("dark_mode") if hasattr(self, "get_text") else "الوضع الداكن", command=lambda: self.change_appearance_mode("Dark"))
+        appearance_menu.add_command(label=self.get_text("system_mode") if hasattr(self, "get_text") else "وضع النظام", command=lambda: self.change_appearance_mode("System"))
+        
+        # قائمة المساعدة
+        help_menu = tk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label=self.get_text("help") if hasattr(self, "get_text") else "مساعدة", menu=help_menu)
+        help_menu.add_command(label=self.get_text("about") if hasattr(self, "get_text") else "حول", command=self.show_about)
+        
+    def change_appearance_mode(self, mode):
+        """تغيير وضع المظهر"""
+        ctk.set_appearance_mode(mode)
+        self.appearance_mode.set(mode)
+        self.save_settings()
+    
+    def open_settings(self):
+        """فتح نافذة الإعدادات"""
+        settings_window = ctk.CTkToplevel(self)
+        settings_window.title(self.get_text("settings_title"))
+        settings_window.geometry("500x400")
+        settings_window.resizable(False, False)
+        settings_window.grab_set()  # جعل النافذة مودال
+        
+        # إطار الإعدادات
+        settings_frame = ctk.CTkFrame(settings_window)
+        settings_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # عنوان
+        title_label = ctk.CTkLabel(settings_frame, text=self.get_text("settings_title"), font=ctk.CTkFont(size=20, weight="bold"))
+        title_label.pack(pady=(0, 20))
+        
+        # اللغة
+        language_frame = ctk.CTkFrame(settings_frame)
+        language_frame.pack(fill="x", padx=10, pady=10)
+        
+        language_label = ctk.CTkLabel(language_frame, text=self.get_text("language"), width=120)
+        language_label.pack(side="left", padx=10)
+        
+        language_var = ctk.StringVar(value=self.language)
+        language_menu = ctk.CTkOptionMenu(language_frame, values=["ar", "en"], variable=language_var)
+        language_menu.pack(side="left", padx=10, fill="x", expand=True)
+        
+        # الجودة الافتراضية
+        quality_frame = ctk.CTkFrame(settings_frame)
+        quality_frame.pack(fill="x", padx=10, pady=10)
+        
+        quality_label = ctk.CTkLabel(quality_frame, text=self.get_text("default_quality"), width=120)
+        quality_label.pack(side="left", padx=10)
+        
+        quality_var = ctk.StringVar(value=self.selected_quality.get())
+        quality_options = ["144p", "240p", "360p", "480p", "720p", "1080p", "1440p", "2160p", "mp3"]
+        quality_menu = ctk.CTkOptionMenu(quality_frame, values=quality_options, variable=quality_var)
+        quality_menu.pack(side="left", padx=10, fill="x", expand=True)
+        
+        # المظهر
+        theme_frame = ctk.CTkFrame(settings_frame)
+        theme_frame.pack(fill="x", padx=10, pady=10)
+        
+        theme_label = ctk.CTkLabel(theme_frame, text=self.get_text("theme"), width=120)
+        theme_label.pack(side="left", padx=10)
+        
+        theme_var = ctk.StringVar(value=self.color_theme.get())
+        theme_menu = ctk.CTkOptionMenu(theme_frame, values=["blue", "green", "dark-blue"], variable=theme_var)
+        theme_menu.pack(side="left", padx=10, fill="x", expand=True)
+        
+        # أزرار الإجراءات
+        buttons_frame = ctk.CTkFrame(settings_frame)
+        buttons_frame.pack(fill="x", padx=10, pady=(20, 10))
+        
+        save_button = ctk.CTkButton(
+            buttons_frame, 
+            text=self.get_text("save_settings"),
+            command=lambda: self.save_settings_dialog(settings_window, language_var.get(), quality_var.get(), theme_var.get())
+        )
+        save_button.pack(side="left", padx=10, pady=10, expand=True, fill="x")
+        
+        cancel_button = ctk.CTkButton(
+            buttons_frame, 
+            text=self.get_text("cancel"),
+            command=settings_window.destroy
+        )
+        cancel_button.pack(side="left", padx=10, pady=10, expand=True, fill="x")
+    
+    def save_settings_dialog(self, window, language, quality, theme):
+        """حفظ الإعدادات من نافذة الإعدادات"""
+        # حفظ الإعدادات الجديدة
+        self.language = language
+        self.selected_quality.set(quality)
+        self.color_theme.set(theme)
+        
+        # تطبيق الإعدادات
+        ctk.set_default_color_theme(theme)
+        self.save_settings()
+        
+        # إغلاق النافذة
+        window.destroy()
+        
+        # إظهار رسالة تأكيد
+        messagebox.showinfo(
+            self.get_text("success"),
+            self.get_text("language_changed")
+        )
+    
+    def show_about(self):
+        """عرض معلومات حول التطبيق"""
+        about_window = ctk.CTkToplevel(self)
+        about_window.title(self.get_text("about_title"))
+        about_window.geometry("500x300")
+        about_window.resizable(False, False)
+        about_window.grab_set()  # جعل النافذة مودال
+        
+        # إطار المعلومات
+        about_frame = ctk.CTkFrame(about_window)
+        about_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # عنوان
+        title_label = ctk.CTkLabel(
+            about_frame, 
+            text=self.get_text("app_title"), 
+            font=ctk.CTkFont(size=24, weight="bold")
+        )
+        title_label.pack(pady=(0, 20))
+        
+        # وصف
+        desc_label = ctk.CTkLabel(
+            about_frame, 
+            text=self.get_text("about_description"),
+            wraplength=450
+        )
+        desc_label.pack(pady=10)
+        
+        # معلومات إضافية
+        version_label = ctk.CTkLabel(about_frame, text=self.get_text("version"))
+        version_label.pack(pady=5)
+        
+        developer_label = ctk.CTkLabel(about_frame, text=self.get_text("developer"))
+        developer_label.pack(pady=5)
+        
+        # زر إغلاق
+        close_button = ctk.CTkButton(
+            about_frame, 
+            text=self.get_text("close"),
+            command=about_window.destroy
+        )
+        close_button.pack(pady=20)
+        
         # إطار إدخال الرابط
-        input_frame = ctk.CTkFrame(main_frame)
-        input_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        input_frame = ctk.CTkFrame(self.main_frame)
+        input_frame.grid(row=0, column=0, padx=15, pady=15, sticky="ew")
         input_frame.grid_columnconfigure(1, weight=1)
         
         # عنوان التطبيق
         title_label = ctk.CTkLabel(
             input_frame, 
-            text="مُنزِّل قوائم تشغيل يوتيوب",
-            font=ctk.CTkFont(size=20, weight="bold")
+            text=self.get_text("app_title"),
+            font=ctk.CTkFont(size=24, weight="bold")
         )
-        title_label.grid(row=0, column=0, columnspan=3, padx=10, pady=(10, 20), sticky="ew")
+        title_label.grid(row=0, column=0, columnspan=3, padx=15, pady=(15, 25), sticky="ew")
         
         # حقل إدخال رابط قائمة التشغيل
-        url_label = ctk.CTkLabel(input_frame, text="رابط قائمة التشغيل:")
-        url_label.grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        url_label = ctk.CTkLabel(input_frame, text=self.get_text("playlist_url"), font=ctk.CTkFont(size=14))
+        url_label.grid(row=1, column=0, padx=15, pady=15, sticky="w")
         
-        url_entry = ctk.CTkEntry(input_frame, textvariable=self.playlist_url, width=400)
-        url_entry.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
+        # إنشاء حقل إدخال مخصص مع دعم النسخ واللصق
+        url_entry = ctk.CTkEntry(input_frame, textvariable=self.playlist_url, width=450, height=35, font=ctk.CTkFont(size=13))
+        url_entry.grid(row=1, column=1, padx=15, pady=15, sticky="ew")
+        
+        # إضافة دعم النسخ واللصق باستخدام اختصارات لوحة المفاتيح
+        url_entry.bind("<Control-v>", lambda event: self.paste_clipboard(url_entry))
+        url_entry.bind("<Control-c>", lambda event: self.copy_to_clipboard(url_entry.get()))
+        url_entry.bind("<Control-x>", lambda event: self.cut_from_entry(url_entry))
         url_entry.bind("<Button-3>", self.show_context_menu)  # قائمة النقر بزر الماوس الأيمن
         
+        # زر جلب القائمة بتصميم أكثر جاذبية
         fetch_button = ctk.CTkButton(
             input_frame, 
-            text="جلب القائمة", 
-            command=self.fetch_playlist
+            text=self.get_text("fetch_playlist"), 
+            command=self.fetch_playlist,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            height=35,
+            corner_radius=8
         )
-        fetch_button.grid(row=1, column=2, padx=10, pady=10)
+        fetch_button.grid(row=1, column=2, padx=15, pady=15)
+        
+    # دوال النسخ واللصق
+    def paste_clipboard(self, entry_widget):
+        """لصق من الحافظة إلى حقل الإدخال"""
+        try:
+            entry_widget.insert("insert", pyperclip.paste())
+        except Exception as e:
+            print(f"خطأ في اللصق: {e}")
+    
+    def copy_to_clipboard(self, text):
+        """نسخ النص إلى الحافظة"""
+        try:
+            pyperclip.copy(text)
+        except Exception as e:
+            print(f"خطأ في النسخ: {e}")
+    
+    def cut_from_entry(self, entry_widget):
+        """قص من حقل الإدخال"""
+        try:
+            if entry_widget.selection_get():
+                self.copy_to_clipboard(entry_widget.selection_get())
+                entry_widget.delete("sel.first", "sel.last")
+        except Exception as e:
+            print(f"خطأ في القص: {e}")
         
         # إطار الخيارات
         options_frame = ctk.CTkFrame(input_frame)
