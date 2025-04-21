@@ -6,10 +6,155 @@ import customtkinter as ctk
 import yt_dlp
 from PIL import Image, ImageTk
 import json
+import pyperclip
+import webbrowser
+import time
 
 # تعيين الثيم الافتراضي للتطبيق
 ctk.set_appearance_mode("System")  # الوضع: "System", "Dark", "Light"
 ctk.set_default_color_theme("blue")  # السمة: "blue", "green", "dark-blue"
+
+# قاموس الترجمات للدعم الكامل للغتين العربية والإنجليزية
+translations = {
+    "ar": {
+        # العناوين الرئيسية
+        "app_title": "مُنزِّل قوائم تشغيل يوتيوب",
+        "playlist_url": "رابط قائمة التشغيل:",
+        "fetch_playlist": "جلب القائمة",
+        "quality": "الجودة:",
+        "select_folder": "اختيار مجلد الحفظ",
+        "switch_language": "English",
+        "generate_links": "توليد ملف الروابط (IDM)",
+        "download_direct": "تحميل مباشر",
+        "ready": "جاهز",
+        
+        # رسائل الحالة
+        "fetching_playlist": "جاري جلب معلومات القائمة...",
+        "fetched_videos": "تم جلب {} فيديو",
+        "fetched_video": "تم جلب الفيديو",
+        "generating_links": "جاري توليد ملف الروابط...",
+        "generated_links": "تم توليد ملف الروابط: {}",
+        "downloading": "جاري تحميل: {}",
+        "downloaded_videos": "تم تحميل {} فيديو",
+        "set_folder": "تم تعيين مجلد الحفظ: {}",
+        
+        # رسائل الخطأ
+        "error": "خطأ",
+        "error_url": "الرجاء إدخال رابط قائمة تشغيل صالح",
+        "error_no_videos": "لا توجد فيديوهات لتوليد الروابط",
+        "error_no_selected": "الرجاء اختيار فيديو واحد على الأقل",
+        "error_fetch": "حدث خطأ أثناء جلب القائمة: {}",
+        "error_generate": "حدث خطأ أثناء توليد ملف الروابط: {}",
+        "error_download": "حدث خطأ أثناء التحميل: {}",
+        
+        # رسائل النجاح
+        "success": "تم",
+        "success_links": "تم توليد ملف الروابط بنجاح في:\n{}",
+        "success_download": "تم تحميل {} فيديو بنجاح في:\n{}",
+        
+        # قائمة السياق
+        "paste": "لصق",
+        "copy": "نسخ",
+        "cut": "قص",
+        
+        # رسائل تغيير اللغة
+        "language_changed": "سيتم تغيير لغة الواجهة إلى العربية عند إعادة التشغيل",
+        
+        # أزرار إضافية
+        "select_all": "تحديد الكل",
+        "deselect_all": "إلغاء تحديد الكل",
+        "settings": "الإعدادات",
+        "about": "حول",
+        "dark_mode": "الوضع الداكن",
+        "light_mode": "الوضع الفاتح",
+        "system_mode": "وضع النظام",
+        "theme": "السمة:",
+        
+        # الإعدادات
+        "settings_title": "الإعدادات",
+        "appearance": "المظهر",
+        "language": "اللغة:",
+        "default_quality": "الجودة الافتراضية:",
+        "save_settings": "حفظ الإعدادات",
+        "cancel": "إلغاء",
+        
+        # حول
+        "about_title": "حول التطبيق",
+        "about_description": "مُنزِّل قوائم تشغيل يوتيوب هو تطبيق مفتوح المصدر يساعدك على استخراج روابط التحميل المباشرة من قوائم تشغيل يوتيوب وتوليد ملف متوافق مع برنامج Internet Download Manager (IDM).",
+        "version": "الإصدار: 1.0.0",
+        "developer": "المطور: TARIQIRAQ2015",
+        "close": "إغلاق"
+    },
+    "en": {
+        # Main Titles
+        "app_title": "YouTube Playlist Downloader",
+        "playlist_url": "Playlist URL:",
+        "fetch_playlist": "Fetch Playlist",
+        "quality": "Quality:",
+        "select_folder": "Select Folder",
+        "switch_language": "عربي",
+        "generate_links": "Generate Links File (IDM)",
+        "download_direct": "Download Directly",
+        "ready": "Ready",
+        
+        # Status Messages
+        "fetching_playlist": "Fetching playlist information...",
+        "fetched_videos": "Fetched {} videos",
+        "fetched_video": "Video fetched",
+        "generating_links": "Generating links file...",
+        "generated_links": "Links file generated: {}",
+        "downloading": "Downloading: {}",
+        "downloaded_videos": "Downloaded {} videos",
+        "set_folder": "Output folder set to: {}",
+        
+        # Error Messages
+        "error": "Error",
+        "error_url": "Please enter a valid playlist URL",
+        "error_no_videos": "No videos to generate links",
+        "error_no_selected": "Please select at least one video",
+        "error_fetch": "Error fetching playlist: {}",
+        "error_generate": "Error generating links file: {}",
+        "error_download": "Error downloading: {}",
+        
+        # Success Messages
+        "success": "Success",
+        "success_links": "Links file successfully generated at:\n{}",
+        "success_download": "Successfully downloaded {} videos to:\n{}",
+        
+        # Context Menu
+        "paste": "Paste",
+        "copy": "Copy",
+        "cut": "Cut",
+        
+        # Language Change Messages
+        "language_changed": "Interface language will be changed to English on next restart",
+        
+        # Additional Buttons
+        "select_all": "Select All",
+        "deselect_all": "Deselect All",
+        "settings": "Settings",
+        "about": "About",
+        "dark_mode": "Dark Mode",
+        "light_mode": "Light Mode",
+        "system_mode": "System Mode",
+        "theme": "Theme:",
+        
+        # Settings
+        "settings_title": "Settings",
+        "appearance": "Appearance",
+        "language": "Language:",
+        "default_quality": "Default Quality:",
+        "save_settings": "Save Settings",
+        "cancel": "Cancel",
+        
+        # About
+        "about_title": "About",
+        "about_description": "YouTube Playlist Downloader is an open-source application that helps you extract direct download links from YouTube playlists and generate a file compatible with Internet Download Manager (IDM).",
+        "version": "Version: 1.0.0",
+        "developer": "Developer: TARIQIRAQ2015",
+        "close": "Close"
+    }
+}
 
 class YoutubePlaylistDownloader(ctk.CTk):
     def __init__(self):
