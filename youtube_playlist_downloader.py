@@ -161,9 +161,8 @@ class YoutubePlaylistDownloader(ctk.CTk):
         super().__init__()
         
         # إعداد النافذة الرئيسية
-        self.title("مُنزِّل قوائم تشغيل يوتيوب")
-        self.geometry("900x600")
-        self.minsize(800, 550)
+        self.geometry("1000x650")
+        self.minsize(900, 600)
         
         # متغيرات التطبيق
         self.playlist_url = ctk.StringVar()
@@ -171,12 +170,37 @@ class YoutubePlaylistDownloader(ctk.CTk):
         self.videos_info = []
         self.output_folder = os.path.expanduser("~/Downloads")
         self.language = "ar"  # الافتراضي: العربية
+        self.appearance_mode = ctk.StringVar(value="System")
+        self.color_theme = ctk.StringVar(value="blue")
         
         # محاولة تحميل الإعدادات
         self.load_settings()
         
+        # تطبيق الإعدادات
+        self.apply_settings()
+        
         # إنشاء واجهة المستخدم
         self.create_ui()
+        
+    def apply_settings(self):
+        """تطبيق إعدادات المستخدم"""
+        # تطبيق المظهر واللغة
+        ctk.set_appearance_mode(self.appearance_mode.get())
+        ctk.set_default_color_theme(self.color_theme.get())
+        
+        # تعيين عنوان التطبيق حسب اللغة
+        self.title(translations[self.language]["app_title"])
+        
+        # تطبيق اتجاه النص حسب اللغة (RTL للعربية، LTR للإنجليزية)
+        if hasattr(self, "main_frame"):
+            if self.language == "ar":
+                for widget in self.winfo_children():
+                    if isinstance(widget, ctk.CTkLabel):
+                        widget.configure(justify="right")
+            else:
+                for widget in self.winfo_children():
+                    if isinstance(widget, ctk.CTkLabel):
+                        widget.configure(justify="left")
     
     def load_settings(self):
         """تحميل إعدادات المستخدم من ملف"""
@@ -187,6 +211,8 @@ class YoutubePlaylistDownloader(ctk.CTk):
                     self.selected_quality.set(settings.get("preferred_quality", "720p"))
                     self.output_folder = settings.get("output_folder", os.path.expanduser("~/Downloads"))
                     self.language = settings.get("language", "ar")
+                    self.appearance_mode.set(settings.get("appearance_mode", "System"))
+                    self.color_theme.set(settings.get("color_theme", "blue"))
         except Exception as e:
             print(f"خطأ في تحميل الإعدادات: {e}")
     
@@ -196,12 +222,18 @@ class YoutubePlaylistDownloader(ctk.CTk):
             settings = {
                 "preferred_quality": self.selected_quality.get(),
                 "output_folder": self.output_folder,
-                "language": self.language
+                "language": self.language,
+                "appearance_mode": self.appearance_mode.get(),
+                "color_theme": self.color_theme.get()
             }
             with open("settings.json", "w", encoding="utf-8") as f:
                 json.dump(settings, f, ensure_ascii=False, indent=4)
         except Exception as e:
             print(f"خطأ في حفظ الإعدادات: {e}")
+            
+    def get_text(self, key):
+        """الحصول على النص المترجم حسب اللغة الحالية"""
+        return translations[self.language].get(key, key)
     
     def create_ui(self):
         """إنشاء واجهة المستخدم الرئيسية"""
