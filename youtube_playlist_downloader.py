@@ -646,14 +646,25 @@ class YoutubePlaylistDownloader(ctk.CTk):
     
     def toggle_language(self):
         """تبديل لغة الواجهة"""
-        # هذه الوظيفة ستكون مُعدة للتوسعة المستقبلية
+        # تبديل اللغة بين العربية والإنجليزية
         if self.language == "ar":
             self.language = "en"
-            messagebox.showinfo("Language", "Interface language will be changed to English on next restart")
+            message_title = "Language"
+            message_text = "Interface language will be changed to English on next restart"
         else:
             self.language = "ar"
-            messagebox.showinfo("اللغة", "سيتم تغيير لغة الواجهة إلى العربية عند إعادة التشغيل")
+            message_title = "اللغة"
+            message_text = "سيتم تغيير لغة الواجهة إلى العربية عند إعادة التشغيل"
+        
+        # حفظ الإعدادات
         self.save_settings()
+        
+        # عرض رسالة تأكيد
+        messagebox.showinfo(message_title, message_text)
+        
+        # تطبيق بعض التغييرات الفورية على الواجهة
+        self.title(translations[self.language]["app_title"])
+        self.status_var.set(translations[self.language]["ready"])
     
     def clear_videos_frame(self):
         """مسح إطار الفيديوهات"""
@@ -752,42 +763,65 @@ class YoutubePlaylistDownloader(ctk.CTk):
             return f"{int(minutes):02d}:{int(seconds):02d}"
     
     def add_video_to_ui(self, video, index, total):
-        """إضافة فيديو إلى واجهة المستخدم"""
-        video_frame = ctk.CTkFrame(self.videos_frame)
-        video_frame.grid(row=index-1, column=0, padx=5, pady=5, sticky="ew")
+        """إضافة فيديو إلى واجهة المستخدم بتصميم حديث"""
+        # إنشاء إطار للفيديو بتصميم محسن
+        video_frame = ctk.CTkFrame(self.videos_frame, corner_radius=8)
+        video_frame.grid(row=index-1, column=0, padx=10, pady=8, sticky="ew")
         video_frame.grid_columnconfigure(1, weight=1)
         
-        # رقم الفيديو
-        index_label = ctk.CTkLabel(video_frame, text=f"{index}/{total}")
-        index_label.grid(row=0, column=0, padx=5, pady=5)
+        # رقم الفيديو بتصميم محسن
+        index_frame = ctk.CTkFrame(video_frame, fg_color="#3E54AC", corner_radius=6, width=40, height=40)
+        index_frame.grid(row=0, column=0, padx=(10, 5), pady=10)
+        index_frame.grid_propagate(False)  # منع الإطار من التغير في الحجم
         
-        # عنوان الفيديو
+        index_label = ctk.CTkLabel(
+            index_frame, 
+            text=f"{index}/{total}",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="white"
+        )
+        index_label.place(relx=0.5, rely=0.5, anchor="center")
+        
+        # عنوان الفيديو بتصميم محسن
         title_label = ctk.CTkLabel(
             video_frame, 
             text=video['title'],
             anchor="w",
-            justify="left",
-            wraplength=500
+            justify="left" if self.language == "en" else "right",
+            wraplength=500,
+            font=ctk.CTkFont(size=13, weight="bold")
         )
-        title_label.grid(row=0, column=1, padx=5, pady=5, sticky="w")
+        title_label.grid(row=0, column=1, padx=10, pady=10, sticky="w")
         
-        # مدة الفيديو
+        # مدة الفيديو بتصميم محسن
+        duration_frame = ctk.CTkFrame(video_frame, fg_color="#ECF2FF", corner_radius=6)
+        duration_frame.grid(row=0, column=2, padx=10, pady=10)
+        
         duration_label = ctk.CTkLabel(
-            video_frame, 
-            text=self.format_duration(video['duration'])
+            duration_frame, 
+            text=self.format_duration(video['duration']),
+            font=ctk.CTkFont(size=12),
+            text_color="#3E54AC",
+            width=70,
+            height=25
         )
-        duration_label.grid(row=0, column=2, padx=5, pady=5)
+        duration_label.pack(padx=8, pady=4)
         
-        # خانة اختيار
+        # خانة اختيار بتصميم محسن
         video['selected'] = tk.BooleanVar(value=True)
         select_checkbox = ctk.CTkCheckBox(
             video_frame, 
             text="",
             variable=video['selected'],
             onvalue=True,
-            offvalue=False
+            offvalue=False,
+            width=24,
+            height=24,
+            corner_radius=2,
+            border_width=2,
+            hover=True
         )
-        select_checkbox.grid(row=0, column=3, padx=5, pady=5)
+        select_checkbox.grid(row=0, column=3, padx=(5, 15), pady=10)
     
     def get_download_url(self, video, quality):
         """الحصول على رابط التحميل المباشر بالجودة المطلوبة"""
